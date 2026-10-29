@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #4fa4fe, #00e9fe);
+            padding: 20px;
+            text-align: center;
+            transition: 0.3s;
+        }
+
+        h1 { color: white; }
+
+        .dark {
+            background: #1e1e1e;
+            color: white;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            margin: auto;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .dark .container {
+            background: #2c2c2c;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+            width: 150px;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background-color: #28a76e;
+            color: white;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+.menu {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* Hidden state */
+#menuBox {
+    position: absolute;
+    top: 45px;
+    right: 0;
+    background: white;
+    padding: 10px;
+    border-radius: 10px;
+    width: 220px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* Visible state */
+#menuBox.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Buttons style */
+#menuBox button {
+    width: 100%;
+    background: #f1f1f1;
+    transition: 0.2s;
+}
+
+#menuBox button:hover {
+    background: #ddd;
+}
+
+/* Dark mode */
+.dark #menuBox {
+    background: #2c2c2c;
+}
+
+.dark #menuBox button {
+    background: #444;
+    color: white;
+}
+
+.dark #menuBox button:hover {
+    background: #555;
+}
+    </style>
+</head>
+
+<body>
+
+<h1>🎓 Student Management System</h1>
+
+<div class="menu">
+    <button onclick="toggleMenu()">☰</button>
+
+    <div id="menuBox">
+        <button onclick="toggleDark()">🌙 Toggle Dark Mode</button>
+        <button onclick="clearAll()">Clear All</button>
+        <button onclick="exportToExcel()">📁 Export to Excel</button>
+    </div>
+</div>
+
+<div class="container">
+
+    <h3>Add Student</h3>
+
+    <input id="name" type="text" placeholder="Student Name"> 
+    <input id="roll" type="text" placeholder="Roll Number">
+    <input id="English" type="number" placeholder="English" min="0" max="100"> 
+    <input id="COA" type="number" placeholder="COA" min="0" max="100">
+    <input id="DS" type="number" placeholder="DS in C" min="0" max="100"> 
+    <input id="Java" type="number" placeholder="Java" min="0" max="100">
+
+    <br>
+    <button class="add-btn" onclick="addStudent()">Add Student</button>
+
+    <h3>Student Records</h3>
+<input id="search" placeholder="Search by name or roll..." onkeyup="searchStudent()">
+    <table>
+        <thead>
+            <tr>
+                <th>Roll no</th>
+                <th>Name</th>
+                <th>English</th>
+                <th>COA</th>
+                <th>DS in C</th>
+                <th>Java</th>
+                <th>Total</th>
+                <th>Percentage</th>
+                <th>Grade</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="studentTable"></tbody>
+    </table>
+
+</div>
+
+<script>
+
+let students = JSON.parse(localStorage.getItem("students")) || [];
+
+// Menu
+function toggleMenu(){
+    let m = document.getElementById("menuBox");
+    m.classList.toggle("show");
+}
+
+// Dark mode
+function toggleDark(){
+    document.body.classList.toggle("dark");
+}
+
+// Grade logic
+function calculateGrade(percent, English, COA, DS, Java) {
+    if (English < 20 || COA < 20 || DS < 20 || Java < 20) return "Reappear";
+    if (percent >= 90) return "A+";
+    else if (percent >= 75) return "A";
+    else if (percent >= 60) return "B";
+    else if (percent >= 50) return "C";
+    else if (percent >= 40) return "D";
+    else return "E";
+
+}
+
+function addStudent() {
+
+    let name = document.getElementById("name").value.trim();
+    let roll = document.getElementById("roll").value.trim();
+    let English = parseInt(document.getElementById("English").value);
+    let COA = parseInt(document.getElementById("COA").value);
+    let DS = parseInt(document.getElementById("DS").value);
+    let Java = parseInt(document.getElementById("Java").value);
+
+    // Validation
+    if(
+        name === "" || roll === "" ||
+        isNaN(English) || isNaN(COA) || isNaN(DS) || isNaN(Java) ||
+        English < 0 || English > 100 ||
+        COA < 0 || COA > 100 ||
+        DS < 0 || DS > 100 ||
+        Java < 0 || Java > 100
+    ){
+        alert("Please enter valid data! Marks must be between 0 and 100.");
+        return;
+    }
+
+    // ✅ FIXED duplicate check
+  let exists = students.find((s, index) => 
+    s.roll.toLowerCase() === roll.toLowerCase() && index !== editIndex
+);
+    if(exists){
+        alert("Roll number already exists!");
+        return;
+    }
+
+    let total = English + COA + DS + Java;
+    let percentage = +(total / 4).toFixed(2);
+    let grade = calculateGrade(percentage, English, COA, DS, Java);
+
+let studentData = { name, roll, English, COA, DS, Java, total, percentage, grade };
+
+if(editIndex === -1){
+    // Normal add
+    students.push(studentData);
+} else {
+    // Update existing student
+    students[editIndex] = studentData;
+    editIndex = -1; // reset
+}
+
+    localStorage.setItem("students", JSON.stringify(students));
+
+    displayStudents();
+    clearFields();
+}
+
+// Display
+function displayStudents() {
+    let table = document.getElementById("studentTable");
+    table.innerHTML = "";
+
+    let maxTotal = students.length ? Math.max(...students.map(s => s.total)) : 0;
+
+    students.forEach((s, i) => {
+
+        let eng = s.English < 20 ? s.English + "R" : s.English;
+        let coa = s.COA < 20 ? s.COA + "R" : s.COA;
+        let ds  = s.DS < 20 ? s.DS + "R" : s.DS;
+        let java = s.Java < 20 ? s.Java + "R" : s.Java;
+
+        let highlight = s.total === maxTotal ? "background:#28a794 ;" : "";
+
+        table.innerHTML += `
+        <tr style="${highlight}">
+            <td>${s.roll}</td>
+            <td>${s.name} ${s.total === maxTotal ? "🏆 Topper" : ""}</td>
+            <td>${eng}</td>
+            <td>${coa}</td>
+            <td>${ds}</td>
+            <td>${java}</td>
+            <td>${s.total}</td>
+            <td>${s.grade === "Reappear" ? "-" : s.percentage + "%"}</td>
+            <td>${s.grade}</td>
+            <td>
+                <button class="delete-btn" onclick="deleteStudent(${i})">Delete</button>
+                  <button onclick="editStudent(${i})">Edit</button>
+            </td>
+        </tr>`;
+    });
+}
+
+function deleteStudent(i){
+    if(confirm("Delete this student?")){
+        students.splice(i,1);
+        localStorage.setItem("students", JSON.stringify(students));
+        displayStudents();
+    }
+}
+
+ 
+let editIndex = -1;
+
+ function editStudent(i){
+    let s = students[i];
+
+    document.getElementById("name").value = s.name;
+    document.getElementById("roll").value = s.roll;
+    document.getElementById("English").value = s.English;
+    document.getElementById("COA").value = s.COA;
+    document.getElementById("DS").value = s.DS;
+    document.getElementById("Java").value = s.Java;
+
+    editIndex = i; // ✅ store index
+}
+ 
+function clearFields(){
+    document.getElementById("name").value = "";
+    document.getElementById("roll").value = "";
+    document.getElementById("English").value = "";
+    document.getElementById("COA").value = "";
+    document.getElementById("DS").value = "";
+    document.getElementById("Java").value = "";
+}
+function searchStudent(){
+    let keyword = document.getElementById("search").value.toLowerCase();
+    let rows = document.querySelectorAll("#studentTable tr");
+
+    rows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(keyword) ? "" : "none";
+    });
+}
+function clearAll(){
+    if(confirm("Delete ALL student records?")){
+        students = []; // clear array
+        localStorage.removeItem("students"); // clear storage
+        displayStudents(); // refresh table
+    }
+}
+function exportToExcel(){
+
+    if(students.length === 0){
+        alert("No data to export!");
+        return;
+    }
+
+    let csv = "Roll,Name,English,COA,DS,Java,Total,Percentage,Grade\n";
+
+    students.forEach(s => {
+        csv += `${s.roll},${s.name},${s.English},${s.COA},${s.DS},${s.Java},${s.total},${s.percentage},${s.grade}\n`;
+    });
+
+    let blob = new Blob([csv], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "students.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+displayStudents();
+
+</script>
+
+</body>
+</html>   
